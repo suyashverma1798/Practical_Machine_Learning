@@ -1,0 +1,88 @@
+---
+title: "Practical Machine Learning"
+author: "Suyash"
+date: "10/12/2020"
+output: html_document
+---
+
+## Overview
+
+Using devices such as Goqii, Amazfit , and Fitbit devices, a large amount of fitness data of millions of individuals is being uploaded everyday .The manner in which individuals perform a barbell lift is what we are trying to access with this project. The data comes from http://groupware.les.inf.puc-rio.br/har wherein 6 participants were asked to perform the same set of exercises correctly and incorrectly with accelerometers placed on the belt, forearm, arm, and dumbell.
+
+## Data
+
+The training data for this project are available here:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+The test data are available here:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+The data for this project come from this source: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har
+
+## L_oading_packages
+```{r Load_packages}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(ggplot2)
+library(corrplot)
+library(randomForest)
+library(rattle)
+set.seed(21345)
+```
+## Loading_Data_&_Partitioning
+```{r Loading_Data_&_Partitioning}
+t_raining <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"))
+t_esting <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"))
+
+l_abel <- createDataPartition(t_raining$classe, p = 0.7, list = FALSE)
+t_rain <- t_raining[l_abel, ]
+t_est <- t_raining[-l_abel, ]
+```
+## D_ata_Cleaning
+Removing missing values and variables with zero variance from the dataset.also removing identification vars.
+```{r Data_Cleaning}
+N_ZV <- nearZeroVar(t_rain)
+t_rain <- t_rain[ ,-N_ZV]
+t_est <- t_est[ ,-N_ZV]
+l_abel <- apply(t_rain, 2, function(x) mean(is.na(x))) > 0.95
+t_rain <- t_rain[, -which(l_abel, l_abel == FALSE)]
+t_est <- t_est[, -which(l_abel, l_abel == FALSE)]
+t_rain <- t_rain[ , -(1:5)]
+t_est <- t_est[ , -(1:5)]
+```
+we know have 54 variables down from 160.
+
+## Explo_ratory__Analysis
+```{r Explo_ratory__Analysis}
+corrMat <- cor(t_rain[,-54])
+corrplot(corrMat, method = "color", type = "lower", tl.cex = 0.8, tl.col = rgb(0,1,0))
+```
+Darker gradient indicates high correlation in the figure above. performing a Principal Component Analysis in order to reduce correlated variables further but decided against doing that due to the number of correlations
+being quite few.
+
+## Trainin_Model
+Utilizing 3 methods for modelling training set. after this choosing the one having the best accuracy. The methods are Decision Tree, Random Forest and
+Generalized Boosted Model.
+i)Decision_TRee
+
+```{r Trainin_Model}
+m_odelDT <- rpart(classe ~ ., data = t_rain, method = "class")
+p_redictDT <- predict(m_odelDT, t_est, type = "class")
+c_onfMatDT <- confusionMatrix(p_redictDT, t_est$classe)
+c_onfMatDT
+```
+
+ii)Random_FOrest
+```{r Random_FOrest }
+c_ontrol <- trainControl(method = "cv", number = 3, verboseIter=FALSE)
+m_odelRF <- train(classe ~ ., data = t_rain, method = "rf", trControl =c_ontrol)
+p_redictRF <- predict(m_odelRF, t_est)
+c_onfMatRF <- confusionMatrix(p_redictRF, t_est$classe)
+c_onfMatRF
+```
+we can see that Random_Forest method provides an accuracy that is much higher than the other method namely training model. So i will be using this method only for our next step which is prediction.
+
+## P_redicting_Results
+```{r P_redicting_Results}
+p_redictRF <- predict(m_odelRF, t_esting)
+p_redictRF
+```
